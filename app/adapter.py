@@ -27,7 +27,16 @@ from constants import USER_CREDENTIAL
 from constants import PASSWORD_CREDENTIAL
 from constants import DOMAIN_CREDENTIAL
 from restcall import RestClient
-from collectDevices import DeviceCollector
+#from collectDevices import
+from localSite import get_local_site
+from localPod import get_local_pod
+from globalDesktopPools import get_global_desktop_pools
+from localDesktopPools import get_local_desktop_pools
+from localSessions import get_local_sessions
+from RDSFarms import get_rds_farms
+from RDSHosts import get_rds_hosts
+from localApplicationPools import get_local_application_pools
+from globalApplicationPools import get_global_application_pools
 
 logger = logging.getLogger(__name__)
 
@@ -75,10 +84,68 @@ def get_adapter_definition() -> AdapterDefinition:
 
     # Object types definition section
 
-        pool = definition.define_object_type("pool", "pool")
-        pool.define_string_property("id", "id")
-        pool.define_string_property("name", "name")
-        pool.define_metric("enabled", "enabled")
+        localSite = definition.define_object_type("site", "Site")
+        localSite.define_string_identifier("uuid", "UUID")
+        localSite.define_string_property("id", "id")
+        localSite.define_string_property("name", "name")
+
+        localPod = definition.define_object_type("pod", "Pod")
+        localPod.define_string_identifier("uuid", "UUID")
+        localPod.define_string_property("id", "id")
+        localPod.define_string_property("name", "name")
+
+        globalDesktopPool = definition.define_object_type("globalDesktopPool", "Global desktop pool")
+        globalDesktopPool.define_string_identifier("uuid", "UUID")
+        globalDesktopPool.define_string_property("id", "id")
+        globalDesktopPool.define_string_property("name", "name")
+        globalDesktopPool.define_metric("enabled", "enabled")
+
+        localDesktopPool = definition.define_object_type("localDesktopPool", "Local desktop pool")
+        localDesktopPool.define_string_identifier("uuid", "UUID")
+        localDesktopPool.define_string_property("id", "id")
+        localDesktopPool.define_string_property("name", "name")
+        localDesktopPool.define_string_property("global_pool_id", "Global pool")
+        localDesktopPool.define_string_property("farm_id", "farm_id")
+        localDesktopPool.define_metric("enabled", "enabled")
+
+        globalApplicationPool = definition.define_object_type("globalApplicationPool", "Global application pool")
+        globalApplicationPool.define_string_identifier("uuid", "UUID")
+        globalApplicationPool.define_string_property("id", "id")
+        globalApplicationPool.define_string_property("name", "name")
+        globalApplicationPool.define_string_property("scope", "scope")
+        globalApplicationPool.define_metric("enabled", "enabled")
+
+        localApplicationPool = definition.define_object_type("localApplicationPool", "Local application pool")
+        localApplicationPool.define_string_identifier("uuid", "UUID")
+        localApplicationPool.define_string_property("id", "id")
+        localApplicationPool.define_string_property("name", "name")
+        localApplicationPool.define_string_property("farm_id", "farm_id")
+        localApplicationPool.define_string_property("type", "type")
+        localApplicationPool.define_metric("enabled", "enabled")
+
+        RDSFarm = definition.define_object_type("RDSFarm", "RDS Farm")
+        RDSFarm.define_string_identifier("uuid", "UUID")
+        RDSFarm.define_string_property("id", "id")
+        RDSFarm.define_string_property("name", "name")
+        RDSFarm.define_metric("enabled", "enabled")
+        RDSFarm.define_string_property("type", "type")
+
+        RDSHost = definition.define_object_type("RDSHost", "RDS Host")
+        RDSHost.define_string_identifier("uuid", "UUID")
+        RDSHost.define_string_property("id", "id")
+        RDSHost.define_string_property("farm_id", "farm_id")
+        RDSHost.define_string_property("name", "name")
+        RDSHost.define_metric("enabled", "enabled")
+        RDSHost.define_metric("session_count","session_count")
+        RDSHost.define_metric("max_session_count", "max_session_count")
+        RDSHost.define_metric("max_session_count_configured", "max_session_count_configured")
+        RDSHost.define_metric("state", "state")
+        
+        localSession = definition.define_object_type("localSession", "Local session")
+        localSession.define_string_identifier("uuid", "UUID")
+        localSession.define_string_property("id", "id")
+        localSession.define_string_property("name", "name")
+        localSession.define_metric("enabled", "enabled")
 
         logger.debug(f"Returning adapter definition: {definition.to_json()}")
         return definition
@@ -94,7 +161,6 @@ def test(adapter_instance: AdapterInstance) -> TestResult:
             password = adapter_instance.get_credential_value(constants.PASSWORD_CREDENTIAL)
             domain = adapter_instance.get_credential_value(constants.DOMAIN_CREDENTIAL)
 
-            logger.info(f"URL: {base_url}") 
             headers = {
                 'Content-Type': 'application/json',
                 'Accept': '*/*',
@@ -111,42 +177,12 @@ def test(adapter_instance: AdapterInstance) -> TestResult:
             status_code, response_data = client.post("/rest/login", headers, json_payload)
             if status_code == 200:
                 token = response_data.get("access_token")
+                logger.info(f"token: {token}")
             else:
                 logger.error("Error:", status_code)
 
-            client = None
-            headers = None
-            headers = {
-                'Authorization': 'Bearer ' + token,
-            }
-            client = RestClient(base_url)
-            status_code, response_data = client.get("/rest/inventory/v1/desktop-pools", headers)            
-
             return result
-            # Sample test connection code follows. Replace with your own test connection
-            # code. A typical test connection will generally consist of:
-            # 1. Read identifier values from adapter_instance that are required to
-            #    connect to the target(s)
-            # 2. Connect to the target(s), and retrieve some sample data
-            # 3. Disconnect cleanly from the target (ensure this happens even if an
-            #    error occurs)
-            # 4. If any of the above failed, return an error, otherwise pass.
 
-            # Read the 'ID' identifier in the adapter instance and use it for a
-            # connection test.
-            #id = adapter_instance.get_identifier_value("ID")
-
-            # In this case the adapter does not need to connect
-            # to anything, as it reads directly from the host it is running on.
-            #if id is None:
-            #    result.with_error("No ID Found")
-            #elif id.lower() == "bad":
-                # As there is not an actual failure condition to test for, this
-                # example only shows the mechanics of reading identifiers and
-                # constructing test results. Here we add an error to the result
-                # that is returned.
-            #    result.with_error("The ID is bad")
-            # otherwise, the test has passed
         except Exception as e:
             logger.error("Unexpected connection test error")
             logger.exception(e)
@@ -156,7 +192,6 @@ def test(adapter_instance: AdapterInstance) -> TestResult:
             logger.debug(f"Returning test result: {result.get_json()}")
             return result
 
-
 def collect(adapter_instance: AdapterInstance) -> CollectResult:
     with Timer(logger, "Collection"):
         result = CollectResult()
@@ -164,7 +199,6 @@ def collect(adapter_instance: AdapterInstance) -> CollectResult:
             host = adapter_instance.get_identifier_value(constants.HOST_IDENTIFIER)
             port = adapter_instance.get_identifier_value(constants.PORT_IDENTIFIER)
             base_url = "https://" + str(host) + ":" + str(port)
-            logger.info(base_url)
 
             user = adapter_instance.get_credential_value(constants.USER_CREDENTIAL)
             password = adapter_instance.get_credential_value(constants.PASSWORD_CREDENTIAL)
@@ -181,20 +215,38 @@ def collect(adapter_instance: AdapterInstance) -> CollectResult:
             }
 
             json_payload = json.dumps(payload)
-            logger.info(json_payload)
+
             client = RestClient(base_url)
             status_code, response_data = client.post("/rest/login", headers, json_payload)
-            logger.info(status_code)
+
             if status_code == 200:
                 token = response_data.get("access_token")
             else:
                 logger.error("Error:", status_code)
+
+            global_Desktop_Pools = get_global_desktop_pools(host, port, token, 1)
+            global_Application_Pools = get_global_application_pools(host, port, token, 1)
+
+            local_Pods = get_local_pod(host, port, token, global_Desktop_Pools, global_Application_Pools)
+            local_Sites = get_local_site(host, port, token, local_Pods)
+            local_Desktop_Pools = get_local_desktop_pools(host, port, token, 1, global_Desktop_Pools)
             
-            logger.info(token)
+            rds_farms = get_rds_farms(host, port, token, 1 )
+            
+            local_Application_Pools = get_local_application_pools(host, port, token, 1, rds_farms, global_Application_Pools)
+            rds_hosts = get_rds_hosts(host, port, token, 1, rds_farms)
+            
+            local_Sessions = get_local_sessions(host, port, token, 1, local_Desktop_Pools, rds_farms, rds_hosts)
 
-            devicecollector = DeviceCollector(adapter_instance, token, host, result, logger)
-
-            result = devicecollector.collect()
+            result.add_objects(global_Desktop_Pools)
+            result.add_objects(global_Application_Pools)
+            result.add_objects(local_Pods)
+            result.add_objects(local_Sites)
+            result.add_objects(local_Desktop_Pools)
+            result.add_objects(local_Application_Pools)
+            result.add_objects(rds_farms)
+            result.add_objects(rds_hosts)
+            result.add_objects(local_Sessions)
 
         except Exception as e:
             logger.error("Unexpected collection error")
@@ -204,7 +256,6 @@ def collect(adapter_instance: AdapterInstance) -> CollectResult:
             # TODO: If any connections are still open, make sure they are closed before returning
             logger.debug(f"Returning collection result {result.get_json()}")
             return result
-
 
 def get_endpoints(adapter_instance: AdapterInstance) -> EndpointResult:
     with Timer(logger, "Get Endpoints"):

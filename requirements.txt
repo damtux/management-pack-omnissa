@@ -1,1 +1,2 @@
 vmware-aria-operations-integration-sdk==1.2.0
+setuptools<81

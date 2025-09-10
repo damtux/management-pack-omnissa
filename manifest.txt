@@ -12,7 +12,7 @@
         "Linux VA"
     ],
     "vendor": "27 virtual",
-    "pak_icon": "",
+    "pak_icon": "VDI.png",
     "pak_validation_script": {
         "script": ""
     },

@@ -1,5 +1,5 @@
-ADAPTER_KIND = "VDI"
-ADAPTER_NAME = "VDI"
+ADAPTER_KIND = "ManagementPackforOmnissaMultiPods"
+ADAPTER_NAME = "Management Pack for Omnissa Multi Pods"
 HOST_IDENTIFIER = "host"
 PORT_IDENTIFIER = "port"
 USER_CREDENTIAL = "user"
