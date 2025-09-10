@@ -1,8 +1,8 @@
 {
-    "display_name": "DISPLAY_NAME",
+    "display_name": "Management Pack for Omnissa Multi Pods",
     "name": "iSDK_ManagementPackforOmnissaMultiPods",
-    "description": "DESCRIPTION",
-    "version": "1.0.0",
+    "description": "Management Pack for Omnissa Multi Pods",
+    "version": "2.0.0",
     "vcops_minimum_version": "8.10.0",
     "disk_space_required": 500,
     "run_scripts_on_all_nodes": "true",
@@ -11,7 +11,7 @@
         "Linux Non-VA",
         "Linux VA"
     ],
-    "vendor": "VENDOR",
+    "vendor": "27 virtual",
     "pak_icon": "",
     "pak_validation_script": {
         "script": ""
