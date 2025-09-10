@@ -1,20 +1,35 @@
-#  Copyright 2022-2023 VMware, Inc.
+#  Copyright 2022 VMware, Inc.
 #  SPDX-License-Identifier: Apache-2.0
+import json
 import sys
 from typing import List
+import requests
+import urllib3
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 import aria.ops.adapter_logging as logging
 from aria.ops.adapter_instance import AdapterInstance
+from aria.ops.data import Metric
+from aria.ops.data import Property
 from aria.ops.definition.adapter_definition import AdapterDefinition
+from aria.ops.definition.units import Units
 from aria.ops.result import CollectResult
 from aria.ops.result import EndpointResult
 from aria.ops.result import TestResult
 from aria.ops.timer import Timer
+
+import constants
 from constants import ADAPTER_KIND
 from constants import ADAPTER_NAME
+from constants import HOST_IDENTIFIER
+from constants import PORT_IDENTIFIER
+from constants import USER_CREDENTIAL
+from constants import PASSWORD_CREDENTIAL
+from constants import DOMAIN_CREDENTIAL
+from restcall import RestClient
+from collectDevices import DeviceCollector
 
 logger = logging.getLogger(__name__)
-
 
 def get_adapter_definition() -> AdapterDefinition:
     """
@@ -26,14 +41,6 @@ def get_adapter_definition() -> AdapterDefinition:
     with Timer(logger, "Get Adapter Definition"):
         definition = AdapterDefinition(ADAPTER_KIND, ADAPTER_NAME)
 
-        # TODO: Add parameters and credentials
-
-        # The key 'container_memory_limit' is a special key read by the VMware Aria Operations
-        # collector to determine how much memory to allocate to the docker container running
-        # this adapter. It does not need to be read inside the adapter code. However, removing
-        # the definition from the object model will remove the ability to change the container
-        # memory limit during the adapter's configuration, and the VMware Aria Operations collector
-        # will give 1024 MB of memory to the container running the adapter instance.
         definition.define_int_parameter(
             "container_memory_limit",
             label="Adapter Memory Limit (MB)",
@@ -44,17 +51,80 @@ def get_adapter_definition() -> AdapterDefinition:
             default=1024,
         )
 
-        # TODO: Add object types, including identifiers, metrics, and properties
+        definition.define_string_parameter(
+            constants.HOST_IDENTIFIER,
+            label="Host",
+            description="FQDN or IP of one Omnissa connection server",
+            required=True,
+            default="",
+        )
+
+        definition.define_int_parameter(
+            constants.PORT_IDENTIFIER,
+            label="TCP Port",
+            description="TCP Port Omnissa is listening on",
+            required=True,
+            advanced=True,
+            default=443,
+        )
+        
+        credential = definition.define_credential_type("vdi_user", "Credential")
+        credential.define_string_parameter(constants.USER_CREDENTIAL, "User Name") 
+        credential.define_password_parameter(constants.PASSWORD_CREDENTIAL, "Password")
+        credential.define_string_parameter(constants.DOMAIN_CREDENTIAL, "Domain")
+
+    # Object types definition section
+
+        pool = definition.define_object_type("pool", "pool")
+        pool.define_string_property("id", "id")
+        pool.define_string_property("name", "name")
+        pool.define_metric("enabled", "enabled")
 
         logger.debug(f"Returning adapter definition: {definition.to_json()}")
         return definition
-
 
 def test(adapter_instance: AdapterInstance) -> TestResult:
     with Timer(logger, "Test"):
         result = TestResult()
         try:
-            # A typical test connection will generally consist of:
+            host = adapter_instance.get_identifier_value(constants.HOST_IDENTIFIER)
+            port = adapter_instance.get_identifier_value(constants.PORT_IDENTIFIER)
+            base_url = "https://" + str(host) + ":" + str(port)
+            user = adapter_instance.get_credential_value(constants.USER_CREDENTIAL)
+            password = adapter_instance.get_credential_value(constants.PASSWORD_CREDENTIAL)
+            domain = adapter_instance.get_credential_value(constants.DOMAIN_CREDENTIAL)
+
+            logger.info(f"URL: {base_url}") 
+            headers = {
+                'Content-Type': 'application/json',
+                'Accept': '*/*',
+            }
+
+            payload = {
+                "username": user,
+                "password": password,
+                "domain": domain,
+            }
+            json_payload = json.dumps(payload)
+
+            client = RestClient(base_url)
+            status_code, response_data = client.post("/rest/login", headers, json_payload)
+            if status_code == 200:
+                token = response_data.get("access_token")
+            else:
+                logger.error("Error:", status_code)
+
+            client = None
+            headers = None
+            headers = {
+                'Authorization': 'Bearer ' + token,
+            }
+            client = RestClient(base_url)
+            status_code, response_data = client.get("/rest/inventory/v1/desktop-pools", headers)            
+
+            return result
+            # Sample test connection code follows. Replace with your own test connection
+            # code. A typical test connection will generally consist of:
             # 1. Read identifier values from adapter_instance that are required to
             #    connect to the target(s)
             # 2. Connect to the target(s), and retrieve some sample data
@@ -62,9 +132,21 @@ def test(adapter_instance: AdapterInstance) -> TestResult:
             #    error occurs)
             # 4. If any of the above failed, return an error, otherwise pass.
 
-            # TODO: Add connection testing logic
-            pass  # TODO: Remove pass statement
+            # Read the 'ID' identifier in the adapter instance and use it for a
+            # connection test.
+            #id = adapter_instance.get_identifier_value("ID")
 
+            # In this case the adapter does not need to connect
+            # to anything, as it reads directly from the host it is running on.
+            #if id is None:
+            #    result.with_error("No ID Found")
+            #elif id.lower() == "bad":
+                # As there is not an actual failure condition to test for, this
+                # example only shows the mechanics of reading identifiers and
+                # constructing test results. Here we add an error to the result
+                # that is returned.
+            #    result.with_error("The ID is bad")
+            # otherwise, the test has passed
         except Exception as e:
             logger.error("Unexpected connection test error")
             logger.exception(e)
@@ -79,17 +161,40 @@ def collect(adapter_instance: AdapterInstance) -> CollectResult:
     with Timer(logger, "Collection"):
         result = CollectResult()
         try:
-            # A typical collection will generally consist of:
-            # 1. Read identifier values from adapter_instance that are required to
-            #    connect to the target(s)
-            # 2. Connect to the target(s), and retrieve data
-            # 3. Add the data into a CollectResult's objects, properties, metrics, etc
-            # 4. Disconnect cleanly from the target (ensure this happens even if an
-            #    error occurs)
-            # 5. Return the CollectResult.
+            host = adapter_instance.get_identifier_value(constants.HOST_IDENTIFIER)
+            port = adapter_instance.get_identifier_value(constants.PORT_IDENTIFIER)
+            base_url = "https://" + str(host) + ":" + str(port)
+            logger.info(base_url)
 
-            # TODO: Add collection logic
-            pass  # TODO: Remove pass statement
+            user = adapter_instance.get_credential_value(constants.USER_CREDENTIAL)
+            password = adapter_instance.get_credential_value(constants.PASSWORD_CREDENTIAL)
+            domain = adapter_instance.get_credential_value(constants.DOMAIN_CREDENTIAL)
+
+            headers = {
+                'Content-Type': 'application/json',
+                'Accept': '*/*',
+            }
+            payload = {
+                "username": user,
+                "password": password,
+                "domain": domain, 
+            }
+
+            json_payload = json.dumps(payload)
+            logger.info(json_payload)
+            client = RestClient(base_url)
+            status_code, response_data = client.post("/rest/login", headers, json_payload)
+            logger.info(status_code)
+            if status_code == 200:
+                token = response_data.get("access_token")
+            else:
+                logger.error("Error:", status_code)
+            
+            logger.info(token)
+
+            devicecollector = DeviceCollector(adapter_instance, token, host, result, logger)
+
+            result = devicecollector.collect()
 
         except Exception as e:
             logger.error("Unexpected collection error")
@@ -123,9 +228,6 @@ def get_endpoints(adapter_instance: AdapterInstance) -> EndpointResult:
         # AdapterInstance object that is passed to the 'test' and 'collect' methods.
         # Any certificate that is encountered in those methods should then be validated
         # against the certificate(s) in the AdapterInstance.
-
-        # TODO: Add any additional endpoints if any
-
         logger.debug(f"Returning endpoints: {result.get_json()}")
         return result
 
