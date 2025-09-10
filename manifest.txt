@@ -1,8 +1,8 @@
 {
-    "display_name": "DISPLAY_NAME",
+    "display_name": "Management Pack for Omnissa Multi Pods",
     "name": "iSDK_VDI",
-    "description": "DESCRIPTION",
-    "version": "1.0.0",
+    "description": "Management Pack for Omnissa Multi Pods",
+    "version": "1.0.3",
     "vcops_minimum_version": "8.10.0",
     "disk_space_required": 500,
     "run_scripts_on_all_nodes": "true",
@@ -11,8 +11,8 @@
         "Linux Non-VA",
         "Linux VA"
     ],
-    "vendor": "VENDOR",
-    "pak_icon": "",
+    "vendor": "27virtual",
+    "pak_icon": "OmnissaMultiPods.png",
     "pak_validation_script": {
         "script": ""
     },
@@ -26,7 +26,7 @@
         "adapter.zip"
     ],
     "adapter_kinds": [
-        "VDI"
+        "OmnissaMultiPods"
     ],
     "license_type": ""
 }
