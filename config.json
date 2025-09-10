@@ -1,6 +1,6 @@
 {
     "container_push_repository": null,
     "container_repository": "docker.io/damtux/vdi",
-    "default_memory_limit": 2048,
+    "default_memory_limit": 1024,
     "use_default_registry": false
 }
