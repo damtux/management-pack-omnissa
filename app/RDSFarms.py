@@ -38,9 +38,8 @@ def get_rds_farms(host, port, token, page) -> List[RDSFarm]:
         queryString = '/rest/inventory/v4/farms?size=' + str(size) + '&page=' + str(page)
         status_code, response_data = client.get(queryString, headers)
         if status_code == 200:
+            logger.info(str(len(response_data)) + " RDSFarms in page: " + str(page))
             for obj in response_data:
-                logger.info("Farm ID:" + obj["id"])
-                logger.info("Farm Name:" + obj["name"])
                 # creating object and adding it to the result set
                 new_farm = RDSFarm(obj["name"], obj["id"])
                 new_farm.with_property("id", obj["id"])

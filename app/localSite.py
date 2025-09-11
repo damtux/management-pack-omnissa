@@ -38,19 +38,13 @@ def get_local_site(host, port, token, localPods: List[localPod]) -> List[localSi
         # Make a GET request to the device endpoint
         queryString = '/rest/federation/v1/sites'
         status_code, response_data = client.get(queryString, headers)
-        logger.info(json.dumps(response_data))
-        for localPod in localPods:
-            logger.info('localPod: ' + localPod.id + " | " + localPod.name)
         if status_code == 200:
             for site in response_data:
-                logger.info("Site Id:" + site["id"] + " | " + site["name"])
                 for podId in site["pods"]:
                     if localPods:
                         for pod in localPods:
-                            logger.info('Current Pod: ' + podId)
-                            logger.info('Local pod to match: ' + pod.id)
                             if podId == pod.id:
-                                logger.info("Local Site Name: " + site["name"])
+                                logger.info("Site Id:" + site["id"] + " | " + site["name"])
                                 new_site = localSite(site["name"], site["id"])
                                 new_site.with_property("id", site["id"])
                                 new_site.add_child(pod)

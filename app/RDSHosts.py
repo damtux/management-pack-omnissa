@@ -39,9 +39,8 @@ def get_rds_hosts(host, port, token, page, RDSFarms: List[RDSFarm]) -> List[RDSH
         queryString = '/rest/inventory/v1/rds-servers?size=' + str(size) + '&page=' + str(page)
         status_code, response_data = client.get(queryString, headers)
         if status_code == 200:
+            logger.info(str(len(response_data)) + " RDSHosts in page: " + str(page))
             for obj in response_data:
-                logger.info("Host ID:" + obj["id"])
-                logger.info("Host Name:" + obj["name"])
                 # creating object and adding it to the result set
                 new_host = RDSHost(obj["name"], obj["id"])
                 new_host.with_property("id", obj["id"])

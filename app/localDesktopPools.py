@@ -39,9 +39,8 @@ def get_local_desktop_pools(host, port, token, page, globalDesktopPools: List[gl
         queryString = '/rest/inventory/v6/desktop-pools?size=' + str(size) + '&page=' + str(page)
         status_code, response_data = client.get(queryString, headers)
         if status_code == 200:
+            logger.info(str(len(response_data)) + " localDesktopPools in page: " + str(page))
             for obj in response_data:
-                logger.info("Pool ID:" + obj["id"])
-                logger.info("Pool Name:" + obj["name"])
                 # creating object and adding it to the result set
                 new_localDesktopPool = localDesktopPool(obj["name"], obj["id"])
                 new_localDesktopPool.with_property("id", obj["id"])

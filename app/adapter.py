@@ -57,7 +57,7 @@ def get_adapter_definition() -> AdapterDefinition:
             "allocate to the container running this adapter instance.",
             required=True,
             advanced=True,
-            default=1024,
+            default=2048,
         )
 
         definition.define_string_parameter(
@@ -254,7 +254,7 @@ def collect(adapter_instance: AdapterInstance) -> CollectResult:
             result.with_error("Unexpected collection error: " + repr(e))
         finally:
             # TODO: If any connections are still open, make sure they are closed before returning
-            logger.debug(f"Returning collection result {result.get_json()}")
+            logger.info(f"Returning collection result {result.get_json()}")
             return result
 
 def get_endpoints(adapter_instance: AdapterInstance) -> EndpointResult:

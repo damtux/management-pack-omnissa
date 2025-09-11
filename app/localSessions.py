@@ -32,7 +32,7 @@ class localSession(Object):
 
 def get_local_sessions(host, port, token, page, localDesktopPools: List[localDesktopPool], RDSFarms: List[RDSFarm], RDSHosts: List[RDSHost]) -> List[localSession]:
         localSessions = []
-        size = 1000 
+        size = 100
         base_url = "https://" + str(host) + ":" + str(port)
         headers = {
             'Authorization': 'Bearer ' + token,
@@ -42,6 +42,7 @@ def get_local_sessions(host, port, token, page, localDesktopPools: List[localDes
         queryString = '/rest/inventory/v1/sessions?size=' + str(size) + '&page=' + str(page)
         status_code, response_data = client.get(queryString, headers)
         if status_code == 200:
+            logger.info(str(len(response_data)) + " localSessions in page: " + str(page))
             for obj in response_data:
                 loginName = ''
                 poolName = ''
@@ -49,17 +50,21 @@ def get_local_sessions(host, port, token, page, localDesktopPools: List[localDes
                 farmName = ''
                 machineName = ''
                 rdsName = ''
+                sessionName = ''
 
+                logger.info(json.dumps(response_data))
                 queryString = '/rest/external/v1/ad-users-or-groups/' + obj["user_id"]
                 status_code, response_data2 = client.get(queryString, headers)
                 if status_code == 200:
                     loginName = response_data2['login_name']
+                    logger.info("loginName: " + loginName)
 
                 if "desktop_pool_id" in obj and obj["desktop_pool_id"]:
                     queryString = '/rest/inventory/v1/desktop-pools/' + obj["desktop_pool_id"]
                     status_code, response_data3 = client.get(queryString, headers)
                     if status_code == 200:
                         poolName = response_data3['name']
+                        logger.info("poolName: " + poolName)
                     # creating object and adding it to the result set
 
                 if "farm_id" in obj and obj["farm_id"]:
@@ -67,6 +72,7 @@ def get_local_sessions(host, port, token, page, localDesktopPools: List[localDes
                     status_code, response_data4 = client.get(queryString, headers)
                     if status_code == 200:
                         farmName = response_data4['name']
+                        logger.info("farmName: " + farmName)
                     # creating object and adding it to the result set    
 
                 if "machine_id" in obj and obj["machine_id"]:
@@ -74,6 +80,7 @@ def get_local_sessions(host, port, token, page, localDesktopPools: List[localDes
                     status_code, response_data5 = client.get(queryString, headers)
                     if status_code == 200:
                         machineName = response_data5['name']
+                        logger.info("machineName: " + machineName)
                     # creating object and adding it to the result set       
 
                 if "rds_server_id" in obj and obj["rds_server_id"]:
@@ -81,49 +88,53 @@ def get_local_sessions(host, port, token, page, localDesktopPools: List[localDes
                     status_code, response_data6 = client.get(queryString, headers)
                     if status_code == 200:
                         rdsName = response_data6['name']
+                        logger.info("rdsName: " + rdsName)
                     # creating object and adding it to the result set           
                 
                 if poolName:
                     sessionName = loginName + ":vdi:" + poolName
-                if rdsName:
-                    sessionName = loginName + ":rds:" + rdsName
-                new_localSession = localSession(sessionName, obj["id"])
-                new_localSession.with_property("id", obj["id"])
+                if farmName:
+                    sessionName = loginName + ":rds:" + farmName
 
-                if "desktop_pool_id" in obj and obj["desktop_pool_id"]:
-                    for localPool in localDesktopPools:
-                        if localPool.id == obj["desktop_pool_id"]:
-                            new_localSession.add_parent(localPool)
+                if sessionName:    
+                    logger.info("sessionName: " + sessionName)
+                    new_localSession = localSession(sessionName, obj["id"])
+                    new_localSession.with_property("id", obj["id"])
 
-                if "rds_server_id" in obj and obj["rds_server_id"]:
-                    for RDSHost in RDSHosts:
-                        if RDSHost.id == obj["rds_server_id"]:
-                            new_localSession.add_parent(RDSHost)   
+                    if "desktop_pool_id" in obj and obj["desktop_pool_id"]:
+                        for localPool in localDesktopPools:
+                            if localPool.id == obj["desktop_pool_id"]:
+                                new_localSession.add_parent(localPool)
 
-                if "farm_id" in obj and obj["farm_id"]:
-                    for RDSFarm in RDSFarms:
-                        if RDSFarm.id == obj["farm_id"]:
-                            new_localSession.add_parent(RDSFarm)                   
-                
-                queryString = '/rest/helpdesk/v1/logon-timing/logon-segment?session_id=' + obj["id"]
-                status_code, response_data7 = client.get(queryString, headers)
-                if status_code == 200:
-                    segment = json.loads(response_data7['logon_segment_data'])
-                    if 'v1' in segment:
-                        logonTime = math.ceil(segment['v1']['d']/1000)         
-                
-                new_localSession.with_property("state", obj["session_state"])
-                new_localSession.with_property("type", obj["session_type"])
-                new_localSession.with_property("version", obj["agent_version"])
-                if "session_protocol" in obj:
-                    new_localSession.with_property("protocol", obj["session_protocol"])
-                new_localSession.with_property("pool", poolName)
-                new_localSession.with_property("name",loginName)
-                new_localSession.with_metric("LogonTime", logonTime)
-                new_localSession.with_property("farmName", farmName)
-                new_localSession.with_property("machineName", machineName)
-                new_localSession.with_property("rdsName", rdsName)
-                localSessions.append(new_localSession)
+                    if "rds_server_id" in obj and obj["rds_server_id"]:
+                        for RDSHost in RDSHosts:
+                            if RDSHost.id == obj["rds_server_id"]:
+                                new_localSession.add_parent(RDSHost)   
+
+                    if "farm_id" in obj and obj["farm_id"]:
+                        for RDSFarm in RDSFarms:
+                            if RDSFarm.id == obj["farm_id"]:
+                                new_localSession.add_parent(RDSFarm)                   
+                    
+                    queryString = '/rest/helpdesk/v1/logon-timing/logon-segment?session_id=' + obj["id"]
+                    status_code, response_data7 = client.get(queryString, headers)
+                    if status_code == 200:
+                        segment = json.loads(response_data7['logon_segment_data'])
+                        if 'v1' in segment:
+                            logonTime = math.ceil(segment['v1']['d']/1000)         
+                    
+                    new_localSession.with_property("state", obj["session_state"])
+                    new_localSession.with_property("type", obj["session_type"])
+                    new_localSession.with_property("version", obj["agent_version"])
+                    if "session_protocol" in obj:
+                        new_localSession.with_property("protocol", obj["session_protocol"])
+                    new_localSession.with_property("pool", poolName)
+                    new_localSession.with_property("name",loginName)
+                    new_localSession.with_metric("LogonTime", logonTime)
+                    new_localSession.with_property("farmName", farmName)
+                    new_localSession.with_property("machineName", machineName)
+                    new_localSession.with_property("rdsName", rdsName)
+                    localSessions.append(new_localSession)
             if len(response_data) == size:
                 get_local_sessions(host, port, token, page +1, localDesktopPools, RDSFarms, RDSHosts)
         else:

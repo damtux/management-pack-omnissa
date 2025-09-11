@@ -40,9 +40,8 @@ def get_local_application_pools(host, port, token, page, RDSFarms: List[RDSFarm]
         queryString = '/rest/inventory/v3/application-pools?size=' + str(size) + '&page=' + str(page)
         status_code, response_data = client.get(queryString, headers)
         if status_code == 200:
+            logger.info(str(len(response_data)) + " localApplicationPools in page: " + str(page))
             for obj in response_data:
-                logger.info("RDS Pool ID:" + obj["id"])
-                logger.info("RDS Pool:" + obj["name"])
                 # creating object and adding it to the result set
                 new_pool = localApplicationPool(obj["name"], obj["id"])
                 new_pool.with_property("id", obj["id"])
