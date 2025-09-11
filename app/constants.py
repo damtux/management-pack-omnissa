@@ -1,5 +1,5 @@
 ADAPTER_KIND = "OmnissaMultiPods"
-ADAPTER_NAME = "Omnissa Multi Pods for Altice"
+ADAPTER_NAME = "Omnissa Multi Pods Management Pack for Altice"
 HOST_IDENTIFIER = "host"
 PORT_IDENTIFIER = "port"
 USER_CREDENTIAL = "user"

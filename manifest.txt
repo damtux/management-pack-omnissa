@@ -2,9 +2,9 @@
     "display_name": "Management Pack for Omnissa Multi Pods",
     "name": "iSDK_VDI",
     "description": "Management Pack for Omnissa Multi Pods",
-    "version": "1.0.4",
+    "version": "1.0.5",
     "vcops_minimum_version": "8.10.0",
-    "disk_space_required": 500,
+    "disk_space_required": 1000,
     "run_scripts_on_all_nodes": "true",
     "eula_file": "eula.txt",
     "platform": [
