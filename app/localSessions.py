@@ -46,11 +46,12 @@ def get_local_sessions(host, port, token, page, localDesktopPools: List[localDes
             for obj in response_data:
                 loginName = ''
                 poolName = ''
-                logonTime = 0
+                logonTime = ''
                 farmName = ''
                 machineName = ''
                 rdsName = ''
                 sessionName = ''
+                sessionprotocol = ''
 
                 logger.info(json.dumps(response_data))
                 queryString = '/rest/external/v1/ad-users-or-groups/' + obj["user_id"]
@@ -114,8 +115,11 @@ def get_local_sessions(host, port, token, page, localDesktopPools: List[localDes
                     if "farm_id" in obj and obj["farm_id"]:
                         for RDSFarm in RDSFarms:
                             if RDSFarm.id == obj["farm_id"]:
-                                new_localSession.add_parent(RDSFarm)                   
-                    
+                                new_localSession.add_parent(RDSFarm)  
+                                                
+                    if "session_protocol" in obj:
+                        sessionprotocol = obj["session_protocol"]
+
                     queryString = '/rest/helpdesk/v1/logon-timing/logon-segment?session_id=' + obj["id"]
                     status_code, response_data7 = client.get(queryString, headers)
                     if status_code == 200:
@@ -126,8 +130,7 @@ def get_local_sessions(host, port, token, page, localDesktopPools: List[localDes
                     new_localSession.with_property("state", obj["session_state"])
                     new_localSession.with_property("type", obj["session_type"])
                     new_localSession.with_property("version", obj["agent_version"])
-                    if "session_protocol" in obj:
-                        new_localSession.with_property("protocol", obj["session_protocol"])
+                    new_localSession.with_property("protocol", sessionprotocol)
                     new_localSession.with_property("pool", poolName)
                     new_localSession.with_property("name",loginName)
                     new_localSession.with_metric("LogonTime", logonTime)

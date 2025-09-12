@@ -29,6 +29,10 @@ class RDSHost(Object):
 
 def get_rds_hosts(host, port, token, page, RDSFarms: List[RDSFarm]) -> List[RDSHost]:
         RDSHosts = []
+        sessioncount = ''
+        maxsessionscount = ''
+        maxsessionscountconfigured = ''
+
         size = 1000
         base_url = "https://" + str(host) + ":" + str(port)
         headers = {
@@ -41,18 +45,22 @@ def get_rds_hosts(host, port, token, page, RDSFarms: List[RDSFarm]) -> List[RDSH
         if status_code == 200:
             logger.info(str(len(response_data)) + " RDSHosts in page: " + str(page))
             for obj in response_data:
+                if "session_count" in obj:
+                    sessioncount = obj["session_count"]
+                if "max_sessions_count" in obj:
+                    maxsessionscount = obj["max_sessions_count"]
+                if "max_sessions_count_configured" in obj:
+                    maxsessionscountconfigured = obj["max_sessions_count_configured"]    
+                    
                 # creating object and adding it to the result set
                 new_host = RDSHost(obj["name"], obj["id"])
                 new_host.with_property("id", obj["id"])
                 new_host.with_metric("enabled", obj["enabled"])
                 new_host.with_property("farm_id", obj["farm_id"])
-                if "session_count" in obj:
-                    new_host.with_metric("session_count", obj["session_count"])
-                if "max_sessions_count" in obj:
-                    new_host.with_metric("max_session_count", obj["max_sessions_count"])
-                if "max_sessions_count_configured" in obj:
-                     new_host.with_metric("max_sessions_count_configured", obj["max_sessions_count_configured"])
-                new_host.with_metric("state", obj["state"])
+                new_host.with_metric("max_session_count", maxsessionscount)
+                new_host.with_metric("session_count", sessioncount)
+                new_host.with_metric("max_sessions_count_configured", maxsessionscountconfigured)
+                new_host.with_property("state", obj["state"])
 
                 for RDSFarm in RDSFarms:
                         if RDSFarm.id == obj["farm_id"]:

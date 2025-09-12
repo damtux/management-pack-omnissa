@@ -135,17 +135,27 @@ def get_adapter_definition() -> AdapterDefinition:
         RDSHost.define_string_property("id", "id")
         RDSHost.define_string_property("farm_id", "farm_id")
         RDSHost.define_string_property("name", "name")
+        RDSHost.define_string_property("state", "state")
         RDSHost.define_metric("enabled", "enabled")
         RDSHost.define_metric("session_count","session_count")
         RDSHost.define_metric("max_session_count", "max_session_count")
         RDSHost.define_metric("max_session_count_configured", "max_session_count_configured")
-        RDSHost.define_metric("state", "state")
         
         localSession = definition.define_object_type("localSession", "Local session")
         localSession.define_string_identifier("uuid", "UUID")
         localSession.define_string_property("id", "id")
         localSession.define_string_property("name", "name")
+        
+        localSession.define_string_property("state", "state")
+        localSession.define_string_property("session_type", "session_type")
+        localSession.define_string_property("agent_version", "agent_version")
+        localSession.define_string_property("protocol", "protocol")
+        localSession.define_string_property("pool", "pool")
+        localSession.define_string_property("farmName", "farmName")
+        localSession.define_string_property("machineName", "machineName")
+        localSession.define_string_property("rdsName", "rdsName")
         localSession.define_metric("enabled", "enabled")
+        localSession.define_metric("LogonTime", "LogonTime")
 
         logger.debug(f"Returning adapter definition: {definition.to_json()}")
         return definition
@@ -234,6 +244,7 @@ def collect(adapter_instance: AdapterInstance) -> CollectResult:
             rds_farms = get_rds_farms(host, port, token, 1 )
             
             local_Application_Pools = get_local_application_pools(host, port, token, 1, rds_farms, global_Application_Pools)
+            
             rds_hosts = get_rds_hosts(host, port, token, 1, rds_farms)
             
             local_Sessions = get_local_sessions(host, port, token, 1, local_Desktop_Pools, rds_farms, rds_hosts)
